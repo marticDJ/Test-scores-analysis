@@ -1,0 +1,167 @@
+---
+title: "Analiza rezultata ispita"
+author: "Djordje Martic, Luka Vulovic"
+date: "18/02/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Podaci
+
+Koristićemo podatke iz baze StudentsPerformance, koju je moguće pronaći na sajtu Kaggle.
+```{r, echo=FALSE}
+data <- read.csv("C:/Users/djole/OneDrive/Desktop/Faks/StudentsPerformance.csv")
+attach(data)
+```
+
+Radi jednostavnosti, nećemo posmatrati podatke o rasi i nivou edukacije roditelja. Pre analize, kategoričke promenljive gender, lunch i test.preparation.course ćemo zapisati kao faktore.
+
+```{r}
+data <- data[,-c(2,3)] #Izbacujemo kolone o rasi i edukacije roditelja zbog jednostavnosti
+data$gender <-as.factor(data$gender)
+data$lunch <-as.factor(data$lunch)
+data$test.preparation.course <- as.factor(data$test.preparation.course)
+summary(data)
+```
+
+U bazi sada imamo 1000 opservacija, od kojih svaka ima 3 numeričke i 3 kategoričke promenljive.
+
+## Kategoričke promenljive
+U ovom delu, obratićemo pažnju na kategoričke promenljive u našoj bazi.
+
+### Gender
+Ova promenljiva nam daje informaciju o polu studenta. Logučno, imamo 2 nivoa u ovom faktoru, "male" i "female" koji odgovaraju muškom i ženskom rodu. U istraživanju je uključeno 518 žena i 482 muškaraca, što možemo videti i na graficima ispod.
+
+```{r, echo=FALSE}
+par(mfrow = c(1,2))
+barplot(c(sum(gender == "male"),sum(gender == "female")), names.arg = c("Muski","Zenski"),col = c("blue","red"), main = "Pol" )
+pie(c(sum(gender == "male"),sum(gender == "female")),labels = c("Muski","Zenski"),main = "Pol", col = c("blue","red"))
+```
+
+### Lunch
+Podaci u koloni lunch sadrže informaciju da li učenik dobija besplatan ili jeftiniji ručak u školi zbog svoje materijalne situacije. Ovde 355 učenika prima ovu vrstu pomoći, dok ostali ne.
+
+```{r, echo=FALSE}
+par(mfrow = c(1,2))
+barplot(c(sum(lunch == "free/reduced"),sum(lunch == "standard")), names.arg = c("Ima","Nema"),col = c("green","red"), main = "Besplatan/snizen rucak" )
+pie(c(sum(lunch == "free/reduced"),sum(lunch == "standard")),labels = c("Ima","Nema"),main = "Besplatan/snizen rucak", col = c("green","red"))
+```
+
+### Test.preparation.course
+Poslednja kategorička promenljiva sadrži informacije o tome da li je đak išao na pripremnu nastavu za polaganje testova. Njih 358 je pohađalo ovu nastavu, dok ostali nisu.
+
+```{r, echo=FALSE}
+par(mfrow = c(1,2))
+barplot(c(sum(test.preparation.course == "none"),sum(test.preparation.course == "completed")), names.arg = c("Nije pohadjao", "Jeste pohadjao"), main = "Pripremna nastava", col = c("red","green"))
+
+pie(c(sum(test.preparation.course == "none"),sum(test.preparation.course == "completed")),labels =  c("Nije pohadjao", "Jeste pohadjao"), main = "Pripremna nastava", col = c("red","green"))
+
+```
+
+Sada ćemo ispitati zavisnost promenljivih lucnh i test.preparation.course, jer ima smisla da učenici u težoj materijalnoj situaciji ne mogu prijuštiti časove.
+
+```{r}
+table(lunch, test.preparation.course) 
+chisq.test(test.preparation.course,lunch)
+```
+
+Vidimo da je p-vrednost testa velika, pa ne možemo odbaciti hipotezu o nezavisnosti ovih promenljivih, što se poklapa sa podacima u tabeli preseka.
+
+## Numeričke promenljive
+
+Imamo 3 numeričke promenljive koje odgovaraju rezultatima studenata na testovima iz matematike, čitanja i pisanja. Ispod možemo videti histograme i boxplotove ovih promenljivih.
+```{r, echo=FALSE}
+par(mfrow = c(2,3))
+
+hist(math.score, main = "Rezultat testa iz matematike", xlab = "Broj poena", ylab = "Ucestalost", col = "yellow")
+hist(reading.score, main = "Rezultat testa iz citanja", xlab = "Broj poena", ylab = "Ucestalost", col = "orange")
+hist(writing.score, main = "Rezultat testa iz pisanja", xlab = "Broj poena", ylab = "Ucestalost", col = "purple")
+
+boxplot(math.score, main = "Rezultat testa iz matematike", xlab = "Broj poena", ylab = "Ucestalost")
+boxplot(reading.score, main = "Rezultat testa iz citanja", xlab = "Broj poena", ylab = "Ucestalost")
+boxplot(writing.score, main = "Rezultat testa iz pisanja", xlab = "Broj poena", ylab = "Ucestalost")
+```
+
+Sa histograma možemo videti da raspodele numeričkih promenljivih liče na normalnu raspodelu, pa ćemo to testirati primenom ks testa.
+
+```{r}
+#KS test pripadnosti normalnoj raspodeli
+ks.test(math.score, function(x) pnorm(x, mean(math.score), sd(math.score)))
+ks.test(reading.score, function(x) pnorm(x, mean(reading.score), sd(reading.score)))
+ks.test(writing.score, function(x) pnorm(x, mean(writing.score), sd(writing.score))) 
+```
+P-vrednost KS testa na rezultatima iz matematike je oko 0.3, pa ovde prihvatamo nultu hipotezu da su rezultati normalno raspodeljeni, dok su ostale p-vredosti male, pa u tom slučaju odbacujemo nultu hipotezu o normalnoj raspodeljenosti.
+senosti kursa
+par(mfrow = c(1,2))
+#Sada cemo uraditi boxplotove za ove vrednosti po polu i zavrsenosti kursa
+```{r}
+boxplot(writing.score ~ gender, ylim = c(0,100), main = "Rezultat testa iz pisanja u zavisnosti od pola", ylab = "Broj proena", xlab = "Pol", col = c("pink", "blue"))
+
+boxplot(math.score ~ gender, ylim = c(0,100), main = "Rezultat testa iz matematike u zavisnosti od pola", ylab = "Broj proena", xlab = "Pol", col = c("pink", "blue"))
+
+boxplot(reading.score ~ gender, ylim = c(0,100), main = "Rezultat testa iz citanja u zavisnosti od pola", ylab = "Broj proena", xlab = "Pol", col = c("pink", "blue"))
+```
+
+Vidimo da su dejočice bolje uradile čitanje i pisanje, a dečaci matematiku, kasnije ćemo ovo testirati t-testom.
+
+```{r}
+boxplot(writing.score ~ test.preparation.course, ylim = c(0,100), main = "Rezultat testa iz pisanja u zavisnosti od pohadjanja casova", ylab = "Broj proena", xlab = "Pol", col = c("green", "red"))
+
+boxplot(math.score ~ test.preparation.course, ylim = c(0,100), main = "Rezultat testa iz matematike u zavisnosti od pohadjanja casova", ylab = "Broj proena", xlab = "Pol", col = c("green", "red"))
+
+boxplot(reading.score ~ test.preparation.course, ylim = c(0,100), main = "Rezultat testa iz citanja u zavisnosti od pohadjanja casova", ylab = "Broj proena", xlab = "Pol", col = c("green", "red"))
+```
+
+Vidimo da su učenici koji su pohađali časove uspešniji od onih koji nisu, ovo ćemo takođe testirati t-testom.
+
+```{r}
+t.test(math.score~gender, alternative = "less")
+t.test(writing.score~gender,alternative = "greater")
+t.test(reading.score~gender, alternative = "greater")
+```
+
+Vidimo da su sve tri p-vrednosti izuzetno male, pa u svim testovima prihvatamo altvernativnu hipotezu, tj. potvrdili smo da su devojčice bolje ( u ovom konkretnom testiranju) u čitanju i pisanju a dečaci u matematici.
+
+```{r}
+t.test(writing.score~test.preparation.course,alternative = "greater")
+t.test(math.score~test.preparation.course,alternative = "greater")
+t.test(reading.score~test.preparation.course,alternative = "greater")
+```
+
+I ovde imamo izuzetno male p-vrednosti, pa prihvatamo alternativne hipoteze da su učenici koji su pohađali pripremnu nastavu uspešniji od onih koji nisu u svim predmetima.
+
+## Korelacija rezultata testova iz čitanja i pisanja
+
+Sada želimo da proverimo korelaciju rezultata testova iz čitanja i pisanja, jer očekujemo da učenici koji bolje čitaju takođe i bolje pišu. Ovo ćemo uraditi Pirsonovim testom nekorelisanosti.
+
+Koeficijent korelacije ocenjujemo Pirsonovim koeficijentom korelacije 
+
+$$
+\hat{\rho_n}=\frac{\sum_{i=1}^{n}{(x_i-\overline{x}})(y_i-\overline{y})}{\sqrt{\sum_{i=1}^{n}(x_i-\overline{x})^2\sum_{i=1}^{n}(y_i-\overline{y})^2}}
+$$
+Sada implementiramo funkciju koja računa Pirsonov koeficijent korelacije:
+
+```{r}
+pearson <- function(x,y) { sum((x-mean(x))*(y-mean(y)))/sqrt(sum((x-mean(x))^2)*sum((y-mean(y))^2)) }
+```
+
+Sada primenimo funkciju i upredimo sa rezultatima ugrađene funkcije `cor.test`
+
+```{r}
+pearson(writing.score,reading.score)
+cor.test(writing.score, reading.score, method = "pearson")
+```
+U oba slučaja smo dobili istu vrednost ocene koja je približno 0.95 što nam govori da su uspesi na ovim testovima visoko korelisani, skoro linearno.
+
+## Zaključak
+
+Na osnovu podataka uspeli smo da dobijemo sledeće značajne zaključke:
+
+1. Devojčice imaju bolje rezultate na testovima iz čitanja i pisanja, dok dečaci imaju bolje rezultate iz matematike. Ovaj rezultat se često pojavljuje na standardizovanim testovima i moguće je vršiti dalja socioliška i psihološka testiranja da se utvrdi uzrok ovoga.
+2. Učenici koji su pohađali pripremnu nastavu su postigli bolje rezultate na testovima od onih koji nisu, što govori u korist toga da je pripremna nastava kvalitetna i da se isplati pohađati je.
+
+3. Rezultati testova iz čitanja i pisanja su veoma visoko korelisani. Ova informacija nam govori da treba razmotriti spajanje ova dva testa u jedan radi uštede resursa.
+
+Moguće je vršiti dalja istraživanja na osnovu ovih podataka, na primer zavisnost uspeha učenika od toga da li imaju privilegije za besplatan ručak, njihove rase, edukacije roditelja, itd.
